@@ -92,3 +92,13 @@ func TestParse(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkParse(b *testing.B) {
+	s := "AV:P/AC:H/PR:L/UI:R/S:C/C:L/I:L/A:L/E:U/RL:T/RC:R/CR:H/IR:M/AR:L/MAV:P/MAC:H/MPR:L/MUI:R/MS:U/MC:L/MI:L/MA:H"
+	for i := 0; i < b.N; i++ {
+		v := NewVectorV3()
+		if err := v.Parse(s); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
