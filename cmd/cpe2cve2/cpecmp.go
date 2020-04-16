@@ -37,10 +37,10 @@ func CPEmatch(a, b string) bool {
 		// ...and now b.
 		if b[j] == '*' {
 			j++ // j should be either at the end of b or ':' now; otherwise, no match
-			if j != len(b) && b[i] != ':' {
+			if j != len(b) && b[j] != ':' {
 				return false
 			}
-			for i < len(b) && b[i] != ':' {
+			for i < len(b) && a[i] != ':' {
 				i++
 			}
 			continue
@@ -52,11 +52,22 @@ func CPEmatch(a, b string) bool {
 }
 
 func getCPEversion(cpe string) string {
-	parts := strings.Split(cpe, ":")
-	if len(parts) < 6 {
-		return "*"
+	i, j, n := 0, 0, 0
+	for ; i < len(cpe); i++ {
+		if cpe[i] != ':' {
+			continue
+		}
+		n++
+		if n == 5 {
+			for j = i + 1; j < len(cpe); j++ {
+				if cpe[j] == ':' {
+					break
+				}
+			}
+			return cpe[i+1 : j]
+		}
 	}
-	return parts[5]
+	return "*"
 }
 
 func validCPE(cpe string) bool {

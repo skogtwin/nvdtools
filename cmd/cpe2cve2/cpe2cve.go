@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,11 +9,21 @@ import (
 )
 
 func process(out io.Writer, in io.Reader, feed *Feed) error {
+	scanner := bufio.NewScanner(in)
+	for scanner.Scan() {
+		cpe := scanner.Text()
+		for _, cve := range feed.CVEItems {
+			match := MatchCVE(cve, cpe)
+			if len(match) != 0 {
+				fmt.Fprintln(out, cpe, cve.CVE.CVEDataMeta.ID)
+			}
+		}
+	}
 	return nil
 }
 
 func main() {
-	feedFile, err := os.Open(os.Args[0])
+	feedFile, err := os.Open(os.Args[1])
 	if err != nil {
 		sayErr(-1, "could not open vulnerability feed: %q", err)
 	}

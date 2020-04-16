@@ -4,121 +4,123 @@ import (
 	"strings"
 )
 
-type operator func(before, now bool) (result, stop bool)
-
-func or(before, now bool) (result, stop bool) {
-	if before || now {
-		return true, true
-	}
-	return false, false
-}
-
-func and(before, now bool) (result, stop bool) {
-	if !(before && now) {
-		return false, true
-	}
-	return true, false
-}
-
-func matchMatch(ret []string, match *Match, cpes ...string) ([]string, bool) {
-	matched := false
-	cpeURI := match.Cpe23Uri
-	for _, cpe := range cpes {
-		result := CPEmatch(cpeURI, cpe)
-		if !result {
-			continue
-		}
-
-		version := getCPEversion(cpe)
-		if version == "*" {
-			ret = append(ret, cpe)
-			matched = true
-			continue
-		}
-
-		if match.VersionStartIncluding != "" {
-			if smartVerCmp(version, match.VersionStartIncluding) < 0 {
-				continue
-			}
-		}
-		if match.VersionStartExcluding != "" {
-			if smartVerCmp(version, match.VersionStartExcluding) != 1 {
-				continue
-			}
-		}
-		if match.VersionEndIncluding != "" {
-			if smartVerCmp(version, match.VersionEndIncluding) > 0 {
-				continue
-			}
-		}
-		if match.VersionEndExcluding != "" {
-			if smartVerCmp(version, match.VersionEndExcluding) != -1 {
-				continue
-			}
-		}
-		ret = append(ret, cpe)
-		matched = true
-	}
-	return ret, matched
-}
-
-func matchNode(matches []string, node *Node, cpes ...string) ([]string, bool) {
-	var (
-		result         bool
-		hasMatch, stop bool
-		op             operator
-	)
-
-	switch node.Operator {
-	case "OR":
-		op = or
-	case "AND":
-		op = and
-	default:
-		panic("unknown operator: " + node.Operator)
-	}
-
-	for i, n := range node.Children {
-		matches, hasMatch = matchNode(matches, n, cpes...)
-		if i == 0 {
-			result, stop = hasMatch, false
-		} else {
-			result, stop = op(result, hasMatch)
-		}
-		if stop {
-			break
-		}
-	}
-	// The node will either have Children or CPEMatch, not both
-	if result {
-		return matches, result
-	}
-
-	for i, match := range node.CPEMatch {
-		matches, hasMatch = matchMatch(matches, match, cpes...)
-		if i == 0 {
-			result, stop = hasMatch, false
-		} else {
-			result, stop = op(result, hasMatch)
-		}
-		if stop {
-			break
-		}
-	}
-	return matches, result
-}
-
 func MatchCVE(cve *CVE, cpes ...string) []string {
-	var (
-		ret      []string
-		hasMatch bool
-	)
-	for _, node := range cve.Nodes() {
-		if ret, hasMatch = matchNode(ret, node, cpes...); hasMatch {
-			break
+	return matchConfigurations(cve.Configurations, cpes...)
+}
+
+func matchConfigurations(c *Configurations, cpes ...string) []string {
+	type element struct {
+		result    bool
+		done      bool
+		matchesAt int
+		parent    *element
+		node      *Node
+	}
+	var ret []string
+	stack := make([]element, 0, len(c.Nodes))
+
+	for _, n := range c.Nodes {
+		item := element{
+			node:      n,
+			matchesAt: len(ret),
+		}
+		stack = append(stack, item)
+
+		for len(stack) != 0 {
+			var cur element
+			cur, stack = stack[len(stack)-1], stack[:len(stack)-1]
+
+			for _, node := range cur.node.Children {
+				result := false
+				if node.Operator == "AND" {
+					result = true
+				}
+				child := element{
+					parent:    &cur,
+					node:      node,
+					matchesAt: len(ret),
+					result:    result,
+				}
+				stack = append(stack, child)
+			}
+
+			if cur.parent != nil && cur.parent.done {
+				continue
+			}
+
+			origin, hasMatch := len(ret), false
+			for _, match := range cur.node.CPEMatch {
+				for _, cpe := range cpes {
+					if !CPEmatch(cpe, match.Cpe23Uri) {
+						continue
+					}
+					if versionMatches(getCPEversion(cpe), match) {
+						if match.Vulnerable {
+							ret = append(ret, cpe)
+						}
+						hasMatch = true
+					}
+				}
+				if hasMatch {
+					if cur.node.Operator == "OR" {
+						cur.result = true
+						break
+					} else if cur.node.Operator == "AND" {
+						if !hasMatch {
+							ret = ret[:origin]
+							cur.result = false
+							break
+						}
+					}
+				}
+			}
+
+			if cur.parent != nil {
+				switch cur.parent.node.Operator {
+				case "OR":
+					if cur.result {
+						cur.parent.result = true
+						cur.parent.done = true
+					}
+				case "AND":
+					if !cur.result {
+						cur.parent.result = false
+						cur.parent.done = true
+						ret = ret[:cur.parent.matchesAt]
+					}
+				}
+			}
 		}
 	}
 	return ret
+}
+
+func versionMatches(version string, match *Match) bool {
+	if version == "*" {
+		return true
+	}
+
+	if match.VersionStartIncluding != "" {
+		if smartVerCmp(version, match.VersionStartIncluding) < 0 {
+			return false
+		}
+	}
+	if match.VersionStartExcluding != "" {
+		if smartVerCmp(version, match.VersionStartExcluding) != 1 {
+			return false
+		}
+	}
+	if match.VersionEndIncluding != "" {
+		if smartVerCmp(version, match.VersionEndIncluding) > 0 {
+			return false
+		}
+	}
+	if match.VersionEndExcluding != "" {
+		if smartVerCmp(version, match.VersionEndExcluding) != -1 {
+			return false
+		}
+	}
+	return true
 }
 
 // smartVerCmp compares stringified versions of software.
