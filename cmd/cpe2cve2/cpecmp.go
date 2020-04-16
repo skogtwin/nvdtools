@@ -2,8 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"os"
 	"strings"
 )
 
@@ -14,32 +12,43 @@ var safeMatching = flag.Bool("-validate_cpes", false, "check the CPE is well-for
 func CPEmatch(a, b string) bool {
 	if *safeMatching {
 		if !validCPE(a) || !validCPE(b) {
-			fmt.Fprintf(os.Stderr, "invalid cpes: %s %s\n", a, b)
 			return false
 		}
 	}
 
-	a, b = a[8:], b[8:] // skip cpe:2.3: prefix
-	for {
-		// compare up to next separator...
-		sa := strings.IndexByte(a, ':')
-		sb := strings.IndexByte(b, ':')
-
-		// ...or end of string, if it is the last part.
-		// no need to check sb, well-formed CPE formatted string should have exactly 12 ':' no matter what
-		if sa == -1 {
-			return a == b
+	for i, j := 0, 0; i < len(a) && j < len(b); i, j = i+1, j+1 {
+		if a[i] == b[j] {
+			continue
 		}
 
-		// none of the fields is ANY and they don't match
-		if a[:sa] != b[:sb] && a[:sa] != "*" && b[:sa] != "*" {
-			return false
+		// The only way non-equal parts of WFN can match is if one of them is of ANY logic type
+		// in which case it should be immediately followed by ':' or be the last character of the string.
+		// First check a...
+		if a[i] == '*' {
+			i++ // i should be either at the end of a or ':' now; otherwise, no match
+			if i != len(a) && a[i] != ':' {
+				return false
+			}
+			for j < len(b) && b[j] != ':' {
+				j++
+			}
+			continue
 		}
-
-		// move to the next part of WFN
-		a = a[sa+1:]
-		b = b[sb+1:]
+		// ...and now b.
+		if b[j] == '*' {
+			j++ // j should be either at the end of b or ':' now; otherwise, no match
+			if j != len(b) && b[i] != ':' {
+				return false
+			}
+			for i < len(b) && b[i] != ':' {
+				i++
+			}
+			continue
+		}
+		// otherwise it's a no-match
+		return false
 	}
+	return true
 }
 
 func getCPEversion(cpe string) string {

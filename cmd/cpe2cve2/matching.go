@@ -20,8 +20,8 @@ func and(before, now bool) (result, stop bool) {
 	return true, false
 }
 
-func matchMatch(match *Match, cpes ...string) []string {
-	var ret []string
+func matchMatch(ret []string, match *Match, cpes ...string) ([]string, bool) {
+	matched := false
 	cpeURI := match.Cpe23Uri
 	for _, cpe := range cpes {
 		result := CPEmatch(cpeURI, cpe)
@@ -32,6 +32,7 @@ func matchMatch(match *Match, cpes ...string) []string {
 		version := getCPEversion(cpe)
 		if version == "*" {
 			ret = append(ret, cpe)
+			matched = true
 			continue
 		}
 
@@ -56,15 +57,16 @@ func matchMatch(match *Match, cpes ...string) []string {
 			}
 		}
 		ret = append(ret, cpe)
+		matched = true
 	}
-	return ret
+	return ret, matched
 }
 
-func matchNode(node *Node, cpes ...string) []string {
+func matchNode(matches []string, node *Node, cpes ...string) ([]string, bool) {
 	var (
-		result, stop bool
-		op           operator
-		ret          []string
+		result         bool
+		hasMatch, stop bool
+		op             operator
 	)
 
 	switch node.Operator {
@@ -76,52 +78,45 @@ func matchNode(node *Node, cpes ...string) []string {
 		panic("unknown operator: " + node.Operator)
 	}
 
-	// The node will either have Children or CPEMatch, not both
 	for i, n := range node.Children {
-		matches := matchNode(n, cpes...)
-		hasMatch := (len(matches) != 0)
+		matches, hasMatch = matchNode(matches, n, cpes...)
 		if i == 0 {
 			result, stop = hasMatch, false
 		} else {
 			result, stop = op(result, hasMatch)
 		}
-		if result {
-			ret = append(ret, matches...)
-		}
 		if stop {
 			break
 		}
 	}
-	if !result {
-		ret = ret[:0]
+	// The node will either have Children or CPEMatch, not both
+	if result {
+		return matches, result
 	}
 
 	for i, match := range node.CPEMatch {
-		matches := matchMatch(match, cpes...)
-		hasMatch := (len(matches) != 0)
+		matches, hasMatch = matchMatch(matches, match, cpes...)
 		if i == 0 {
 			result, stop = hasMatch, false
 		} else {
 			result, stop = op(result, hasMatch)
 		}
-		if result {
-			ret = append(ret, matches...)
-		}
 		if stop {
 			break
 		}
 	}
-	if !result {
-		ret = ret[:0]
-	}
-
-	return ret
+	return matches, result
 }
 
 func MatchCVE(cve *CVE, cpes ...string) []string {
-	var ret []string
+	var (
+		ret      []string
+		hasMatch bool
+	)
 	for _, node := range cve.Nodes() {
-		ret = append(ret, matchNode(node, cpes...)...)
+		if ret, hasMatch = matchNode(ret, node, cpes...); hasMatch {
+			break
+		}
 	}
 	return ret
 }

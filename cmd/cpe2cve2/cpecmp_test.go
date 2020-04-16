@@ -34,6 +34,7 @@ func TestCPEmatch(t *testing.T) {
 func BenchmarkCPEmatch(b *testing.B) {
 	src := `cpe:2.3:a:microsoft:*internet_ex??????:8.0.*:sp?:*:*:*:*:*:*`
 	tgt := `cpe:2.3:a:microsoft:internet_explorer:8.1.6001:sp3:*:*:*:*:*:*`
+	*safeMatching = false
 	for i := 0; i < b.N; i++ {
 		// checking error and result adds about 10% of runtime to this benchmark on my machine
 		// and correctness is covered by tests, so skip it
