@@ -1,25 +1,42 @@
 package main
 
 import (
-	"bufio"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
-func process(out io.Writer, in io.Reader, feed *Feed) error {
-	scanner := bufio.NewScanner(in)
-	for scanner.Scan() {
-		cpe := scanner.Text()
+func process(out io.Writer, in io.Reader, feed *Feed) (err error) {
+	r := csv.NewReader(in)
+	r.Comma = '\t'
+	w := csv.NewWriter(out)
+	w.Comma = '\t'
+	defer func() {
+		w.Flush()
+		if err2 := w.Error(); err == nil {
+			err = err2
+		}
+	}()
+	for {
+		rec, err := r.Read()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		cpes := strings.Split(rec[len(rec)-1], ",")
 		for _, cve := range feed.CVEItems {
-			match := MatchCVE(cve, cpe)
+			match := MatchCVE(cve, cpes...)
 			if len(match) != 0 {
-				fmt.Fprintln(out, cpe, cve.CVE.CVEDataMeta.ID)
+				rec = append(rec, cve.CVE.CVEDataMeta.ID, strings.Join(match, ","))
+				w.Write(rec)
 			}
 		}
 	}
-	return nil
 }
 
 func main() {

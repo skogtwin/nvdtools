@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -13,54 +14,54 @@ func TestMatchConfiguration(t *testing.T) {
 		Inventory []string
 		Matches   []string
 	}{
-		// {},
-		// {
-		// 	Inventory: []string{
-		// 		"cpe:2.3:o:linux:linux_kernel:2.6.1:*:*:*:*:*:*:*",
-		// 		"cpe:2.3:a:djvulibre_project:djvulibre:3.5.11:*:*:*:*:*:*:*",
-		// 	},
-		// },
-		// {
-		// 	Rule: 0,
-		// 	Inventory: []string{
-		// 		"cpe:2.3:o:microsoft:windows_xp:*:sp3:*:*:*:*:*:*",
-		// 		"cpe:2.3:a:microsoft:ie:6.1:*:*:*:*:*:*:*",
-		// 		"cpe:2.3:a:facebook:styx:0.1:*:*:*:*:*:*:*",
-		// 	},
-		// 	Matches: []string{
-		// 		"cpe:2.3:o:microsoft:windows_xp:*:sp3:*:*:*:*:*:*",
-		// 		"cpe:2.3:a:microsoft:ie:6.1:*:*:*:*:*:*:*",
-		// 	},
-		// },
-		// {
-		// 	Rule: 1,
-		// 	Inventory: []string{
-		// 		"cpe:2.3:a:microsoft:ie:3.9:*:*:*:*:*:*:*",
-		// 		"cpe:2.3:a:microsoft:ie:4.0:*:*:*:*:*:*:*",
-		// 		"cpe:2.3:a:microsoft:ie:5.4:*:*:*:*:*:*:*",
-		// 		"cpe:2.3:a:microsoft:ie:6.0:*:*:*:*:*:*:*",
-		// 	},
-		// 	Matches: []string{
-		// 		"cpe:2.3:a:microsoft:ie:4.0:*:*:*:*:*:*:*",
-		// 		"cpe:2.3:a:microsoft:ie:5.4:*:*:*:*:*:*:*",
-		// 	},
-		// },
-		// {
-		// 	Rule: 2,
-		// 	Inventory: []string{
-		// 		"cpe:2.3:a:mozilla:firefox:64.1:*:*:*:*:*:*:*",
-		// 	},
-		// },
-		// {
-		// 	Rule: 3,
-		// 	Inventory: []string{
-		// 		"cpe:2.3:o:netbsd:netbsd:1.1:*:*:*:*:*:*:*",
-		// 		"cpe:2.3:a:microsoft:winsock:2.0:*:*:*:*:*:*:*",
-		// 	},
-		// 	Matches: []string{
-		// 		"cpe:2.3:o:netbsd:netbsd:1.1:*:*:*:*:*:*:*",
-		// 	},
-		// },
+		{},
+		{
+			Inventory: []string{
+				"cpe:2.3:o:linux:linux_kernel:2.6.1:*:*:*:*:*:*:*",
+				"cpe:2.3:a:djvulibre_project:djvulibre:3.5.11:*:*:*:*:*:*:*",
+			},
+		},
+		{
+			Rule: 0,
+			Inventory: []string{
+				"cpe:2.3:o:microsoft:windows_xp:*:sp3:*:*:*:*:*:*",
+				"cpe:2.3:a:microsoft:ie:6.1:*:*:*:*:*:*:*",
+				"cpe:2.3:a:facebook:styx:0.1:*:*:*:*:*:*:*",
+			},
+			Matches: []string{
+				"cpe:2.3:o:microsoft:windows_xp:*:sp3:*:*:*:*:*:*",
+				"cpe:2.3:a:microsoft:ie:6.1:*:*:*:*:*:*:*",
+			},
+		},
+		{
+			Rule: 1,
+			Inventory: []string{
+				"cpe:2.3:a:microsoft:ie:3.9:*:*:*:*:*:*:*",
+				"cpe:2.3:a:microsoft:ie:4.0:*:*:*:*:*:*:*",
+				"cpe:2.3:a:microsoft:ie:5.4:*:*:*:*:*:*:*",
+				"cpe:2.3:a:microsoft:ie:6.0:*:*:*:*:*:*:*",
+			},
+			Matches: []string{
+				"cpe:2.3:a:microsoft:ie:4.0:*:*:*:*:*:*:*",
+				"cpe:2.3:a:microsoft:ie:5.4:*:*:*:*:*:*:*",
+			},
+		},
+		{
+			Rule: 2,
+			Inventory: []string{
+				"cpe:2.3:a:mozilla:firefox:64.1:*:*:*:*:*:*:*",
+			},
+		},
+		{
+			Rule: 3,
+			Inventory: []string{
+				"cpe:2.3:o:netbsd:netbsd:1.1:*:*:*:*:*:*:*",
+				"cpe:2.3:a:microsoft:winsock:2.0:*:*:*:*:*:*:*",
+			},
+			Matches: []string{
+				"cpe:2.3:o:netbsd:netbsd:1.1:*:*:*:*:*:*:*",
+			},
+		},
 		{
 			Rule: 4,
 			Inventory: []string{
@@ -71,7 +72,7 @@ func TestMatchConfiguration(t *testing.T) {
 			},
 		},
 	}
-	feed, err := loadFeed(bytes.NewBufferString(testJSONdict))
+	feed, err := loadFeed(strings.NewReader(testJSONdict))
 	if err != nil {
 		t.Fatal(err)
 	}
