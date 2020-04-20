@@ -6,16 +6,41 @@ import (
 	"testing"
 )
 
+func TestProcess(t *testing.T) {
+	feed, err := loadFeed(strings.NewReader(testDictJSONStr))
+	if err != nil {
+		t.Fatalf("could not load test feed: %v", err)
+	}
+
+	in := `1	2	3	cpe:2.3:o:microsoft:windows_10:-:*:*:*:*:*:x64:*,cpe:2.3:a:adobe:flash_player:24.0.0.194
+1	2	3	cpe:2.3:o:*:centos_linux:7.5.1804:*:*:*:*:*:*:*,cpe:2.3:a:*:chardet:2.2.1:*:*:*:*:*:*:*,cpe:2.3:a:*:javapackages:1.0.0:*:*:*:*:*:*:*, cpe:2.3:a:*:kitchen:1.1.1:*:*:*:*:*:*:*,cpe:2.3:a:*:nose:1.3.7:*:*:*:*:*:*:*,cpe:2.3:a:*:python-dateutil:1.5:*:*:*:*:*:*:*,cpe:2.3:a:*:pytz:2016.10:*:*:*:*:*:*:*,cpe:2.3:a:*:setuptools:0.9.8:*:*:*:*:*:*:*,cpe:2.3:a:*:chardet:2.2.1:*:*:*:*:*:*:*,cpe:2.3:a:*:javapackages:1.0.0:*:*:*:*:*:*:*,cpe:2.3:a:*:kitchen:1.1.1:*:*:*:*:*:*:*,cpe:2.3:a:*:nose:1.3.7:*:*:*:*:*:*:*,cpe:2.3:a:*:python-dateutil:1.5:*:*:*:*:*:*:*,cpe:2.3:a:*:pytz:2016.10:*:*:*:*:*:*:*,cpe:2.3:a:*:setuptools:0.9.8:*:*:*:*:*:*:*
+1	2	3	cpe:2.3:o:*:centos_linux:7.5.1804:*:*:*:*:*:*:*,cpe:2.3:a:*:chardet:2.2.1:*:*:*:*:*:*:*,cpe:2.3:a:*:kitchen:1.1.1:*:*:*:*:*:*:*,cpe:2.3:a:*:chardet:2.2.1:*:*:*:*:*:*:*,cpe:2.3:a:*:kitchen:1.1.1:*:*:*:*:*:*:*,cpe:2.3:a:*:chardet:2.2.1:*:*:*:*:*:*:*,cpe:2.3:a:*:kitchen:1.1.1:*:*:*:*:*:*:*
+`
+
+	want := `1	2	3	cpe:2.3:o:microsoft:windows_10:-:*:*:*:*:*:x64:*,cpe:2.3:a:adobe:flash_player:24.0.0.194	CVE-2016-0165	cpe:2.3:o:microsoft:windows_10:-:*:*:*:*:*:x64:*
+1	2	3	cpe:2.3:o:microsoft:windows_10:-:*:*:*:*:*:x64:*,cpe:2.3:a:adobe:flash_player:24.0.0.194	CVE-2666-1337	cpe:2.3:a:adobe:flash_player:24.0.0.194,cpe:2.3:o:microsoft:windows_10:-:*:*:*:*:*:x64:*
+`
+	var w bytes.Buffer
+	r := strings.NewReader(in)
+	process(&w, r, feed)
+	have := w.String()
+	if have != want {
+		t.Fatalf("want:\n%s\nhave:\n%s", want, have)
+	}
+
+}
+
 func BenchmarkProcess(b *testing.B) {
 	feed, err := loadFeed(strings.NewReader(testDictJSONStr))
 	if err != nil {
 		b.Fatalf("could not load test feed: %v", err)
 	}
 
-	in := `cpe:/o:microsoft:windows_10:-::~~~~x64~,cpe:/a:adobe:flash_player:24.0.0.194
-cpe:/o::centos_linux:7.5.1804,cpe:/a::chardet:2.2.1,cpe:/a::javapackages:1.0.0,cpe:/a::kitchen:1.1.1,cpe:/a::nose:1.3.7,cpe:/a::python-dateutil:1.5,cpe:/a::pytz:2016.10,cpe:/a::setuptools:0.9.8,cpe:/a::chardet:2.2.1,cpe:/a::javapackages:1.0.0,cpe:/a::kitchen:1.1.1,cpe:/a::nose:1.3.7,cpe:/a::python-dateutil:1.5,cpe:/a::pytz:2016.10,cpe:/a::setuptools:0.9.8
-cpe:/o::centos_linux:7.5.1804,cpe:/a::chardet:2.2.1,cpe:/a::kitchen:1.1.1,cpe:/a::chardet:2.2.1,cpe:/a::kitchen:1.1.1,cpe:/a::chardet:2.2.1,cpe:/a::kitchen:1.1.1
+	in := `1	2	3	cpe:2.3:o:microsoft:windows_10:-:*:*:*:*:*:x64:*,cpe:2.3:a:adobe:flash_player:24.0.0.194
+1	2	3	cpe:2.3:o:*:centos_linux:7.5.1804:*:*:*:*:*:*:*,cpe:2.3:a:*:chardet:2.2.1:*:*:*:*:*:*:*,cpe:2.3:a:*:javapackages:1.0.0:*:*:*:*:*:*:*, cpe:2.3:a:*:kitchen:1.1.1:*:*:*:*:*:*:*,cpe:2.3:a:*:nose:1.3.7:*:*:*:*:*:*:*,cpe:2.3:a:*:python-dateutil:1.5:*:*:*:*:*:*:*,cpe:2.3:a:*:pytz:2016.10:*:*:*:*:*:*:*,cpe:2.3:a:*:setuptools:0.9.8:*:*:*:*:*:*:*,cpe:2.3:a:*:chardet:2.2.1:*:*:*:*:*:*:*,cpe:2.3:a:*:javapackages:1.0.0:*:*:*:*:*:*:*,cpe:2.3:a:*:kitchen:1.1.1:*:*:*:*:*:*:*,cpe:2.3:a:*:nose:1.3.7:*:*:*:*:*:*:*,cpe:2.3:a:*:python-dateutil:1.5:*:*:*:*:*:*:*,cpe:2.3:a:*:pytz:2016.10:*:*:*:*:*:*:*,cpe:2.3:a:*:setuptools:0.9.8:*:*:*:*:*:*:*
+1	2	3	cpe:2.3:o:*:centos_linux:7.5.1804:*:*:*:*:*:*:*,cpe:2.3:a:*:chardet:2.2.1:*:*:*:*:*:*:*,cpe:2.3:a:*:kitchen:1.1.1:*:*:*:*:*:*:*,cpe:2.3:a:*:chardet:2.2.1:*:*:*:*:*:*:*,cpe:2.3:a:*:kitchen:1.1.1:*:*:*:*:*:*:*,cpe:2.3:a:*:chardet:2.2.1:*:*:*:*:*:*:*,cpe:2.3:a:*:kitchen:1.1.1:*:*:*:*:*:*:*
 `
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var w bytes.Buffer
